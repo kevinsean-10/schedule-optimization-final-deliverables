@@ -175,7 +175,17 @@ class determine_label_pool:
         return data_durasi_per_rute
     
     def hour_of_week(self,data_schedule,data_branch):
-        data_hour_of_week = data_schedule.groupby(['main_key','dayofweek','origin_period','origin','destination'])[['load_factor']].mean().reset_index()
+        data_hour_of_week = data_schedule.groupby(['main_key','dayofweek','origin_period','origin','destination'], as_index=False).agg({
+            'load_factor' : 'mean',
+            'minimal_n_departures':'mean',
+            'maximal_load_factor':'mean',
+            'total_penumpang':'mean'
+        })
+        data_hour_of_week['total_penumpang'] = round(data_hour_of_week['total_penumpang'])
+        data_hour_of_week = data_hour_of_week.rename(columns={
+            'total_penumpang':"Rata-Rata penumpang"
+        })
+        data_hour_of_week['origin_period']=data_hour_of_week['origin_period'].replace({'24:00:00':'00:00:00'})
         data_hour_of_week = self.naming_pool(data_hour_of_week,data_branch)
         return data_hour_of_week
     
@@ -183,7 +193,11 @@ class determine_label_pool:
         """Merge Data supaya dapet bahan untuk jadwal sementara"""
         data_prejadwal = pd.merge(data_hour_of_week,data_durasi_per_rute,on='main_key',how='left')
         data_prejadwal['arrival_time'] = data_prejadwal['origin_period']+data_prejadwal['duration']
-        data_prejadwal = data_prejadwal[['main_key', 'dayofweek', 'origin_period', 'origin','origin_name', 'duration', 'arrival_time','destination','destination_name','load_factor']]
+        data_prejadwal = data_prejadwal[['main_key', 'dayofweek', 'origin_period', 'origin','origin_name',
+                                        'duration', 'arrival_time','destination','destination_name',
+                                        'load_factor', 'minimal_n_departures', 'maximal_load_factor',
+                                        'Rata-Rata penumpang']]
+        # data_prejadwal = data_prejadwal[['main_key', 'dayofweek', 'origin_period', 'origin',  'arrival_time','destination','load_factor']]
 
         """Cek jika arrival timenya beda di besoknya atau engga"""
         data_prejadwal['tomorrow?']=data_prejadwal['arrival_time'].dt.date - data_prejadwal['origin_period'].dt.date
